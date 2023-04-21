@@ -10,6 +10,13 @@ from Crypto.Cipher import AES
 import pandas
 from Crypto import Random
 
+#mydb = mysql.connector.connect(insert connection string) connect to database
+#mycursor = mydb.cursor()
+#mycursor.execute("CREATE TABLE IF NOT EXISTS passwords(user VARCHAR(255), password VARCHAR(255))")
+#sql = "INSERT INTO passwords(user, password) VALUES (%s, %s)"
+#val = (username, encrypted_password)
+#mycursor.execute(sql, val)
+#mydb.commit()
 global tk 
 tk = Tk()
 def UI():
@@ -70,6 +77,12 @@ def createnew():
     #generated_password = ''.join(secrets.choice(letters) for i in range(length))
 def showall():
     #this will generate all passwords
+    #sql = "SELECT password FROM passwords WHERE user = %s"
+    #val = username
+    #mycursor.execute(sql, val)
+    #data = mycursor.fetchall()
+    #for x in data:
+    #   print(x)
     print("This will show all existing passwords")
 
 def homepage():

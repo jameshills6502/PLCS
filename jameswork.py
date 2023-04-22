@@ -23,12 +23,16 @@ def UI():
     tk.title("Password Manager")
     tk.eval('tk::PlaceWindow . center')
     tk.geometry("400x400")
-    username_entry = Entry(fg="black", bg="white", width=50)
-    password_entry = Entry(fg="black", bg="white", width=50)
-    button = Button(text="Submit", command= lambda: login(username_entry, password_entry))
-    username_entry.pack()
-    password_entry.pack()
-    button.pack()
+    l1 = Label(tk, text="Enter Username:")
+    l2 = Label(tk, text="Enter Password:")
+    username_entry = Entry(tk, fg="black", bg="white", width=50)
+    password_entry = Entry(tk, fg="black", bg="white", width=50)
+    button = Button(tk, text="Submit", command= lambda: login(username_entry, password_entry))
+    l1.grid(row=0,column=0,sticky=W,pady=2)
+    l2.grid(row=1, column=0, sticky=W, pady=2)
+    username_entry.grid(row=0, column=1, pady=2)
+    password_entry.grid(row=0, column=1,pady=2)
+    button.grid(row=2, column=1, pady=1)
 
 def createnew():
     top = Toplevel(tk)
@@ -84,6 +88,7 @@ def showall():
     #for x in data:
     #   print(x)
     print("This will show all existing passwords")
+    
 
 def homepage():
     top = Toplevel(tk)

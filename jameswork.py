@@ -1,22 +1,27 @@
 import secrets
-#import mysql.connector
-#from mysql.connector import Error
+import mysql.connector
+from mysql.connector import Error
 import string
 import hashlib
 import base64
 from tkinter import * 
 import random
-#from Crypto.Cipher import AES
-#import pandas
-#from Crypto import Random
-
-#mydb = mysql.connector.connect(insert connection string) connect to database
-#mycursor = mydb.cursor()
-#mycursor.execute("CREATE TABLE IF NOT EXISTS passwords(user VARCHAR(255), password VARCHAR(255))")
-#sql = "INSERT INTO passwords(user, password) VALUES (%s, %s)"
-#val = (username, encrypted_password)
-#mycursor.execute(sql, val)
-#mydb.commit()
+from Crypto.Cipher import AES
+from Crypto.Random import Random
+mydb = mysql.connector.connect(Server='localhost',Database='passwordmanager',Uid='applogin',Pwd='applogin')
+mycursor = mydb.cursor()
+#CREATE USER 'applogin' IDENTIFIED BY 'applogin';
+#GRANT ALL ON `passwordmanager`.* TO 'applogin';
+#potentially add a description per password, allows user to remember pass
+#CREATE TABLE IF NOT EXISTS `passwordmanager`.`passwords` (
+#  `user_id` INT NOT NULL,
+#  `password` VARCHAR(255) NULL,
+#  PRIMARY KEY (`user_id`));
+#CREATE TABLE IF NOT EXISTS `passwordmanager`.`users` (
+#  `user_id` INT NOT NULL AUTO_INCREMENT,
+#  `username` VARCHAR(255) NULL,
+#  `password` VARCHAR(255) NULL,
+#  PRIMARY KEY (`user_id`));
 global tk 
 tk = Tk()
 def UI():
@@ -62,11 +67,19 @@ def storenewacc(top, usernamewidget, passwordwidget, confirmpasswidget):
         error = Label(top, text="Passwords don't match!")
         error.grid(row=4, column=1, pady=1)
     else:
-        #sql = "INSERT INTO users(username, password) VALUES(%s, %s)"
-        #val = (username, password)
-        #mycursor.execute(sql, val)
-        #mydb.commit()
-        print("pass match")
+        sql1 = "SELECT * FROM users WHERE username = %s;"
+        val = (username)
+        mycursor.execute(sql1, val)
+        data = mycursor.fetchall()
+        if len(data) > 0:
+            error = Label(text="Account already exists!")
+        else:
+            sql = "INSERT INTO users(username, password) VALUES(%s, %s)"
+            val = (username, password)
+            mycursor.execute(sql, val)
+            mydb.commit()
+            print("Data uploaded!")
+            top.destroy()
 
 def createnew():
     top = Toplevel(tk)
@@ -89,6 +102,9 @@ def createnew():
     entry.pack()
     create.pack()
     def create_password():
+        #this function generates a password and allows the user
+        #to save it to the database using the save button
+        #user can also copy directly to clipboard
         try:
             int_entry = int(entry.get())
             selection = dropdown.get()
@@ -101,8 +117,17 @@ def createnew():
             elif selection == options[2]:
                 letters = string.ascii_letters + string.digits + string.punctuation
                 generated_password = ''.join(secrets.choice(letters)for i in range(int_entry))
+            #change this to a textbox, allows user to copy password
+            #copy = Button(top, text="Copy", command= lambda: copytoclip(generated_password))
+            #below 4 lines copy code to clipboard
+            #window.withdraw
+            #window.clipboard_clear()
+            #window.clipboard_append(text to append here)
+            #window.update() makes it stay on the clipboard after the window is closed
+            #savepass = Button(top, text="Save Password", command = lamda: savepassword(username, encrypted_password))
             display_pass = Label(top, text="Your generated password is " + generated_password)
             display_pass.pack()
+            #change to grid, makes it better
             encrypted = encrypt(generated_password)
             display_encrypt = Label(top, text="This is now encrypted " + encrypted)
             display_encrypt.pack()
@@ -110,17 +135,35 @@ def createnew():
             error = Label(top, text="Please input an integer")
             if (error.winfo_exists()) == 1:
                 error.pack()
-        
-    #letters = string.ascii_letters + string.digits + string.punctuation
-    #generated_password = ''.join(secrets.choice(letters) for i in range(length))
-def showall():
+
+def savepassword(username, encrypted_password):
+    #saves the password to the database
+    sql2 = "SELECT user_id FROM users where username=%s;"
+    var2 = username
+    mycursor.execute(sql2, var2)
+    data = mycursor.fetchall()
+    user_id = data
+    sql = "INSERT INTO passwords(user_id, password) VALUES(%i, %s) WHERE user_id=%i;"
+    var = (user_id, encrypted_password,user_id)
+    mycursor.execute(sql, var)
+    mydb.commit()
+
+def showall(username):
     #this will generate all passwords
-    #sql = "SELECT password FROM passwords WHERE user = %s"
-    #val = username
-    #mycursor.execute(sql, val)
-    #data = mycursor.fetchall()
-    #for x in data:
-    #   print(x)
+    sql2 = "SELECT user_id FROM users where username=%s;"
+    var2 = username
+    mycursor.execute(sql2, var2)
+    data = mycursor.fetchall()
+    #select the data found, store user_id here
+    #user_id = data
+    for x in data:
+        print(x)
+    sql = "SELECT password FROM passwords where user_id=%i;"
+    var = user_id
+    mycursor.execute(sql, var)
+    data = mycursor.fetchall()
+    for x in data:
+       print(x)
     print("This will show all existing passwords")
     
 
@@ -134,18 +177,6 @@ def homepage():
     home.pack()
     create_password.pack()
 
-#def read_from_file():
-    #data = pandas.read_excel('C:\Users\evaan\Dropbox\PC\Documents\PasswordManagerFile.xlsx')
-    #data_format = pandas.DataFrame(data, columns=['name'])
-    #display = Label(text=data_format)
-    #print(display)
-
-#def write_to_file():
-    #data_formatted = ""
-    #with pandas.ExcelWriter('C:\Users\evaan\Dropbox\PC\Documents\PasswordManagerFile.xlsx', mode='a') as writer:
-        #data_formatted.to_excel(writer, sheet_name='Sheet1')
-
-
 def encrypt(data):
     #block_size = 16
     #pad = lambda s: s + (block_size - len(s) % block_size) * chr(block_size - len(s) % block_size)
@@ -156,9 +187,14 @@ def encrypt(data):
     #raw = pad(raw)
     #iv = Random.new().read(AES.block_size)
     #cipher =   AES.new(private_key, AES.MODE_CBC, iv)
-    key = "xxx".encode("utf8")
+    #data needs to be converted to bytes in order to be hashed
+    key = "xxx".encode("utf-8")
     cipher = AES.new(key, AES.MODE_EAX)
-    data = data.encode("utf8")
+    #here the data is being encoded
+    data = data.encode("utf-8")
+    #here the data is being decoded
+    #data = data.decode("utf-8")
+
     #this is being fucked up somewhere
     nonce = cipher.nonce
     ciphertext, tag = cipher.encrypt_and_digest(data)
@@ -176,6 +212,12 @@ def login(username_entry, password_entry):
     password = password_entry.get()
     stored_username = "J"
     stored_password = "H"
+    sql = "SELECT * FROM users WHERE username = %s;"
+    val = username
+    mycursor.execute(sql, val)
+    data = mycursor.fetchall()
+    for x in data:
+        print(x)
     if username != stored_username or password != stored_password:
         error = Label(text="Wrong username or password, you entered " + username + password)
         error.grid_forget()

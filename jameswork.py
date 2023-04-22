@@ -6,9 +6,9 @@ import hashlib
 import base64
 from tkinter import * 
 import random
-from Crypto.Cipher import AES
-import pandas
-from Crypto import Random
+#from Crypto.Cipher import AES
+#import pandas
+#from Crypto import Random
 
 #mydb = mysql.connector.connect(insert connection string) connect to database
 #mycursor = mydb.cursor()
@@ -27,12 +27,46 @@ def UI():
     l2 = Label(tk, text="Enter Password:")
     username_entry = Entry(tk, fg="black", bg="white", width=50)
     password_entry = Entry(tk, fg="black", bg="white", width=50)
-    button = Button(tk, text="Submit", command= lambda: login(username_entry, password_entry))
+    button = Button(tk, text="Login", command= lambda: login(username_entry, password_entry))
+    button2 = Button(tk, text="Create Account", command=createaccount)
     l1.grid(row=0,column=0,sticky=W,pady=2)
     l2.grid(row=1, column=0, sticky=W, pady=2)
     username_entry.grid(row=0, column=1, pady=2)
-    password_entry.grid(row=0, column=1,pady=2)
+    password_entry.grid(row=1, column=1,pady=2)
     button.grid(row=2, column=1, pady=1)
+    button2.grid(row=2, column=1, pady=1)
+def createaccount():
+    top = Toplevel()
+    top.title('Create Account')
+    top.grab_set()
+    l1 = Label(top, text="Enter Username:")
+    l2 = Label(top, text="Enter Password:")
+    l3 = Label(top, text="Confirm Password:")
+    username = Entry(top, fg="black", bg="white", width=50)
+    password = Entry(top, fg="black", bg="white", width=50)
+    confirmpass = Entry(top, fg="black", bg="white", width=50)
+    submit = Button(top, text="Create Account", command= lambda: storenewacc(top, username, password, confirmpass))
+    l1.grid(row=0,column=0,sticky=W, pady=2)
+    l2.grid(row=1, column=0, sticky=W, pady=2)
+    l3.grid(row=2, column=0, sticky=W, pady=2)
+    username.grid(row=0, column=1, pady=2)
+    password.grid(row=1, column=1, pady=2)
+    confirmpass.grid(row=2, column=1, pady=2)
+    submit.grid(row=3, column=1, pady=1)
+
+def storenewacc(top, usernamewidget, passwordwidget, confirmpasswidget):
+    username = usernamewidget.get()
+    password = passwordwidget.get()
+    confirmpass = confirmpasswidget.get()
+    if password != confirmpass:
+        error = Label(top, text="Passwords don't match!")
+        error.grid(row=4, column=1, pady=1)
+    else:
+        #sql = "INSERT INTO users(username, password) VALUES(%s, %s)"
+        #val = (username, password)
+        #mycursor.execute(sql, val)
+        #mydb.commit()
+        print("pass match")
 
 def createnew():
     top = Toplevel(tk)
@@ -74,7 +108,7 @@ def createnew():
             display_encrypt.pack()
         except ValueError:
             error = Label(top, text="Please input an integer")
-            if (error.winfo_exists()) == 0:
+            if (error.winfo_exists()) == 1:
                 error.pack()
         
     #letters = string.ascii_letters + string.digits + string.punctuation
@@ -144,9 +178,10 @@ def login(username_entry, password_entry):
     stored_password = "H"
     if username != stored_username or password != stored_password:
         error = Label(text="Wrong username or password, you entered " + username + password)
+        error.grid_forget()
         presence_check = error.winfo_exists()
-        if presence_check == 0:
-            error.pack()
+        if presence_check == 1:
+            error.grid(row=3,column=1,pady=1)
             username_entry.delete(0, tk.END)
             password_entry.delete(0, tk.END)
     else:

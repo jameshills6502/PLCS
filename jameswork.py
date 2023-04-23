@@ -1,15 +1,23 @@
 import secrets
 import mysql.connector
-from mysql.connector import Error
+from mysql.connector import Error, connect
+import mysql as mdb
 import string
 import hashlib
 import base64
 from tkinter import * 
 import random
 from Crypto.Cipher import AES
-from Crypto.Random import Random
-mydb = mysql.connector.connect(Server='localhost',Database='passwordmanager',Uid='applogin',Pwd='applogin')
-mycursor = mydb.cursor()
+mydb = mdb.connect(host ="localhost", db ="passwordmanager", user="applogin", pwd="applogin")
+try:
+    with connect(host ="localhost",                  
+                   db ="passwordmanager",                 
+                   user="applogin", 
+                   pwd="applogin") as connection:
+        query = "CREATE TABLE"
+except Error as e:
+    print(e)
+mycursor = connection.cursor()
 #CREATE USER 'applogin' IDENTIFIED BY 'applogin';
 #GRANT ALL ON `passwordmanager`.* TO 'applogin';
 #potentially add a description per password, allows user to remember pass
@@ -94,14 +102,14 @@ def createnew():
     dropdown.set(options[0])
 
     select_option = OptionMenu(top, dropdown, *options)
-    select_option.pack()
+    select_option.grid(row=0, column=0, sticky=W, pady=2)
     label1 = Label(top, text="Please input desired length of password")
     entry = Entry(top, fg="black", bg="white", width=50)
-    create = Button(top, text="Create", command= lambda: create_password())
-    label1.pack()
-    entry.pack()
-    create.pack()
-    def create_password():
+    create = Button(top, text="Create", command= lambda: create_password(top, dropdown, entry, options))
+    label1.grid(row=1, column=0, sticky=W,pady=2)
+    entry.grid(row=2, column=0, sticky=W, pady=2)
+    create.grid(row=4, column=0, sticky=W, pady=2)
+def create_password(top, dropdown, entry, options, username, ):
         #this function generates a password and allows the user
         #to save it to the database using the save button
         #user can also copy directly to clipboard
@@ -117,25 +125,24 @@ def createnew():
             elif selection == options[2]:
                 letters = string.ascii_letters + string.digits + string.punctuation
                 generated_password = ''.join(secrets.choice(letters)for i in range(int_entry))
-            #change this to a textbox, allows user to copy password
-            #copy = Button(top, text="Copy", command= lambda: copytoclip(generated_password))
-            #below 4 lines copy code to clipboard
-            #window.withdraw
-            #window.clipboard_clear()
-            #window.clipboard_append(text to append here)
-            #window.update() makes it stay on the clipboard after the window is closed
-            #savepass = Button(top, text="Save Password", command = lamda: savepassword(username, encrypted_password))
+            copy = Button(top, text="Copy", command= lambda: copytoclip(generated_password, top))
+            copy.pack(row=1, column=1, pady=1)
+            savepass = Button(top, text="Save Password", command = lambda: savepassword(encrypted))
             display_pass = Label(top, text="Your generated password is " + generated_password)
-            display_pass.pack()
-            #change to grid, makes it better
+            display_pass.grid(row=0, column=1, pady=1)
             encrypted = encrypt(generated_password)
             display_encrypt = Label(top, text="This is now encrypted " + encrypted)
-            display_encrypt.pack()
+            display_encrypt.grid(row=2, column=1, pady=1)
         except ValueError:
             error = Label(top, text="Please input an integer")
             if (error.winfo_exists()) == 1:
-                error.pack()
+                error.grid(row=3, column=0, sticky=W, pady=2)
 
+def copytoclip(password, top):
+     top.withdraw
+     top.clipboard_clear()
+     top.clipboard_append(password)
+     top.update() 
 def savepassword(username, encrypted_password):
     #saves the password to the database
     sql2 = "SELECT user_id FROM users where username=%s;"
@@ -155,7 +162,7 @@ def showall(username):
     mycursor.execute(sql2, var2)
     data = mycursor.fetchall()
     #select the data found, store user_id here
-    #user_id = data
+    user_id = data
     for x in data:
         print(x)
     sql = "SELECT password FROM passwords where user_id=%i;"
@@ -232,3 +239,4 @@ def login(username_entry, password_entry):
         homepage()
 UI()
 tk.mainloop()
+mydb.close()

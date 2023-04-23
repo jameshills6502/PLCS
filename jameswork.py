@@ -1,23 +1,14 @@
 import secrets
 import mysql.connector
 from mysql.connector import Error, connect
-import mysql as mdb
 import string
 import hashlib
 import base64
 from tkinter import * 
 import random
 from Crypto.Cipher import AES
-mydb = mdb.connect(host ="localhost", db ="passwordmanager", user="applogin", pwd="applogin")
-try:
-    with connect(host ="localhost",                  
-                   db ="passwordmanager",                 
-                   user="applogin", 
-                   pwd="applogin") as connection:
-        query = "CREATE TABLE"
-except Error as e:
-    print(e)
-mycursor = connection.cursor()
+mydb = mysql.connector.connect(host ="localhost", db ="passwordmanager", user="applogin", password="applogin")
+mycursor = mydb.cursor()
 #CREATE USER 'applogin' IDENTIFIED BY 'applogin';
 #GRANT ALL ON `passwordmanager`.* TO 'applogin';
 #potentially add a description per password, allows user to remember pass
@@ -47,7 +38,7 @@ def UI():
     username_entry.grid(row=0, column=1, pady=2)
     password_entry.grid(row=1, column=1,pady=2)
     button.grid(row=2, column=1, pady=1)
-    button2.grid(row=2, column=1, pady=1)
+    button2.grid(row=2, column=0, sticky=W, pady=2)
 def createaccount():
     top = Toplevel()
     top.title('Create Account')
@@ -76,7 +67,7 @@ def storenewacc(top, usernamewidget, passwordwidget, confirmpasswidget):
         error.grid(row=4, column=1, pady=1)
     else:
         sql1 = "SELECT * FROM users WHERE username = %s;"
-        val = (username)
+        val = (username, )
         mycursor.execute(sql1, val)
         data = mycursor.fetchall()
         if len(data) > 0:
@@ -89,7 +80,7 @@ def storenewacc(top, usernamewidget, passwordwidget, confirmpasswidget):
             print("Data uploaded!")
             top.destroy()
 
-def createnew():
+def createnew(user_id):
     top = Toplevel(tk)
     top.title('Generate Password')
     top.grab_set()
@@ -105,11 +96,11 @@ def createnew():
     select_option.grid(row=0, column=0, sticky=W, pady=2)
     label1 = Label(top, text="Please input desired length of password")
     entry = Entry(top, fg="black", bg="white", width=50)
-    create = Button(top, text="Create", command= lambda: create_password(top, dropdown, entry, options))
+    create = Button(top, text="Create", command= lambda: create_password(top, dropdown, entry, options, user_id))
     label1.grid(row=1, column=0, sticky=W,pady=2)
     entry.grid(row=2, column=0, sticky=W, pady=2)
     create.grid(row=4, column=0, sticky=W, pady=2)
-def create_password(top, dropdown, entry, options, username, ):
+def create_password(top, dropdown, entry, options, user_id):
         #this function generates a password and allows the user
         #to save it to the database using the save button
         #user can also copy directly to clipboard
@@ -127,7 +118,7 @@ def create_password(top, dropdown, entry, options, username, ):
                 generated_password = ''.join(secrets.choice(letters)for i in range(int_entry))
             copy = Button(top, text="Copy", command= lambda: copytoclip(generated_password, top))
             copy.pack(row=1, column=1, pady=1)
-            savepass = Button(top, text="Save Password", command = lambda: savepassword(encrypted))
+            savepass = Button(top, text="Save Password", command = lambda: savepassword(encrypted, user_id))
             display_pass = Label(top, text="Your generated password is " + generated_password)
             display_pass.grid(row=0, column=1, pady=1)
             encrypted = encrypt(generated_password)
@@ -143,30 +134,17 @@ def copytoclip(password, top):
      top.clipboard_clear()
      top.clipboard_append(password)
      top.update() 
-def savepassword(username, encrypted_password):
+def savepassword(encrypted_password, user_id):
     #saves the password to the database
-    sql2 = "SELECT user_id FROM users where username=%s;"
-    var2 = username
-    mycursor.execute(sql2, var2)
-    data = mycursor.fetchall()
-    user_id = data
     sql = "INSERT INTO passwords(user_id, password) VALUES(%i, %s) WHERE user_id=%i;"
-    var = (user_id, encrypted_password,user_id)
+    var = (user_id, encrypted_password, user_id)
     mycursor.execute(sql, var)
     mydb.commit()
 
-def showall(username):
+def showall(user_id):
     #this will generate all passwords
-    sql2 = "SELECT user_id FROM users where username=%s;"
-    var2 = username
-    mycursor.execute(sql2, var2)
-    data = mycursor.fetchall()
-    #select the data found, store user_id here
-    user_id = data
-    for x in data:
-        print(x)
     sql = "SELECT password FROM passwords where user_id=%i;"
-    var = user_id
+    var = (user_id, )
     mycursor.execute(sql, var)
     data = mycursor.fetchall()
     for x in data:
@@ -174,15 +152,16 @@ def showall(username):
     print("This will show all existing passwords")
     
 
-def homepage():
+def homepage(user_id):
     top = Toplevel(tk)
     top.title('Home Page')
     top.grab_set()
     home = Label(top, text="Hello!")
-    create_password = Button(top, text="Create a new password", command=createnew)
-    see_passwords = Button(top, text="See existing passwords", command=showall)
+    create_password = Button(top, text="Create a new password", command= lambda: createnew(user_id))
+    see_passwords = Button(top, text="See existing passwords", command= lambda: showall(user_id))
     home.pack()
     create_password.pack()
+    see_passwords.pack()
 
 def encrypt(data):
     #block_size = 16
@@ -217,26 +196,29 @@ def decrypt():
 def login(username_entry, password_entry):
     username = username_entry.get()
     password = password_entry.get()
-    stored_username = "J"
-    stored_password = "H"
     sql = "SELECT * FROM users WHERE username = %s;"
-    val = username
+    val = (username, )
     mycursor.execute(sql, val)
     data = mycursor.fetchall()
     for x in data:
         print(x)
-    if username != stored_username or password != stored_password:
-        error = Label(text="Wrong username or password, you entered " + username + password)
+    if len(data) != 0:
+        stored_password = data[0]
+        if password != stored_password:
+            error = Label(text="Wrong username or password, you entered " + username + password)
+            error.grid_forget()
+            presence_check = error.winfo_exists()
+            if presence_check == 1:
+                error.grid(row=3,column=1,pady=1)
+        elif password == stored_password:
+            user_id = data[0]
+            homepage(user_id)
+    if len(data) == 0:
+        error = Label(text="Wrong username or password")
         error.grid_forget()
         presence_check = error.winfo_exists()
         if presence_check == 1:
-            error.grid(row=3,column=1,pady=1)
-            username_entry.delete(0, tk.END)
-            password_entry.delete(0, tk.END)
-    else:
-        right = Label(text="Correct")
-        right.pack()
-        homepage()
+            error.grid(row=3,column=1,pady=1) 
 UI()
 tk.mainloop()
 mydb.close()

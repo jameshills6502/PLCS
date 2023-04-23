@@ -13,9 +13,10 @@ mycursor = mydb.cursor()
 #GRANT ALL ON `passwordmanager`.* TO 'applogin';
 #potentially add a description per password, allows user to remember pass
 #CREATE TABLE IF NOT EXISTS `passwordmanager`.`passwords` (
-#  `user_id` INT NOT NULL,
+# 'password_id' INT NOT NULL AUTO_INCREMENT, 
+# `user_id` INT NOT NULL,
 #  `password` VARCHAR(255) NULL,
-#  PRIMARY KEY (`user_id`));
+#  PRIMARY KEY (`password_id));
 #CREATE TABLE IF NOT EXISTS `passwordmanager`.`users` (
 #  `user_id` INT NOT NULL AUTO_INCREMENT,
 #  `username` VARCHAR(255) NULL,
@@ -72,6 +73,7 @@ def storenewacc(top, usernamewidget, passwordwidget, confirmpasswidget):
         data = mycursor.fetchall()
         if len(data) > 0:
             error = Label(text="Account already exists!")
+            error.grid(row=4, column=1, pady=1)
         else:
             sql = "INSERT INTO users(username, password) VALUES(%s, %s)"
             val = (username, password)
@@ -117,13 +119,13 @@ def create_password(top, dropdown, entry, options, user_id):
                 letters = string.ascii_letters + string.digits + string.punctuation
                 generated_password = ''.join(secrets.choice(letters)for i in range(int_entry))
             copy = Button(top, text="Copy", command= lambda: copytoclip(generated_password, top))
-            copy.pack(row=1, column=1, pady=1)
-            savepass = Button(top, text="Save Password", command = lambda: savepassword(encrypted, user_id))
+            copy.grid(row=1, column=1, pady=1)
+            savepass = Button(top, text="Save Password", command = lambda: savepassword(generated_password, user_id))
+            savepass.grid(row=1,column=2, pady=1)
             display_pass = Label(top, text="Your generated password is " + generated_password)
+            #make it so that if the button is clicked again, the label
+            #gets reset so drop and grid it
             display_pass.grid(row=0, column=1, pady=1)
-            encrypted = encrypt(generated_password)
-            display_encrypt = Label(top, text="This is now encrypted " + encrypted)
-            display_encrypt.grid(row=2, column=1, pady=1)
         except ValueError:
             error = Label(top, text="Please input an integer")
             if (error.winfo_exists()) == 1:
@@ -134,24 +136,47 @@ def copytoclip(password, top):
      top.clipboard_clear()
      top.clipboard_append(password)
      top.update() 
-def savepassword(encrypted_password, user_id):
+def savepassword(generated_password, user_id):
     #saves the password to the database
-    sql = "INSERT INTO passwords(user_id, password) VALUES(%i, %s) WHERE user_id=%i;"
-    var = (user_id, encrypted_password, user_id)
+    #encrypted = encrypt(generated_password)
+    #print(encrypted)
+    sql = "INSERT INTO passwords(user_id, password) VALUES(%s, %s);"
+    #currently doesn't work as primary key is needed 
+    #in passwords table
+    var = (user_id, generated_password)
     mycursor.execute(sql, var)
     mydb.commit()
 
 def showall(user_id):
     #this will generate all passwords
-    sql = "SELECT password FROM passwords where user_id=%i;"
+    top = Toplevel()
+    top.title("Passwords")
+    top.grab_set()
+    l1 = Label(top, text="Your stored passwords:")
+    l1.grid(row=0, column=0, sticky=W, pady=2)
+    sql = "SELECT password FROM passwords WHERE user_id = %s;"
     var = (user_id, )
     mycursor.execute(sql, var)
     data = mycursor.fetchall()
     for x in data:
-       print(x)
-    print("This will show all existing passwords")
-    
-
+        loop = 1
+        for i in data:
+            password = i
+            label = Label(top, text=password)
+            number = Label(top, text=loop)
+            number.grid(row=loop,column=0, sticky=W, pady=2)
+            label.grid(row=loop, column=1, sticky=W, pady=2)
+            copy = Button(top, text="Copy", command= lambda: copytoclip(password, top))
+            copy.grid(row=loop, column=2, pady=1)
+            delete = Button(top, text="Delete Password", command= lambda: deletepassword(password)) # command should delete the password from the database
+            delete.grid(row=loop, column=3, pady=1)
+            loop += loop
+def deletepassword(password, ):
+    sql = "DELETE password FROM passwords WHERE password = %s;"
+    var = (password, )
+    mycursor.execute(sql, var)
+    mydb.commit()
+#this doesn't work just yet!
 def homepage(user_id):
     top = Toplevel(tk)
     top.title('Home Page')
@@ -174,6 +199,7 @@ def encrypt(data):
     #iv = Random.new().read(AES.block_size)
     #cipher =   AES.new(private_key, AES.MODE_CBC, iv)
     #data needs to be converted to bytes in order to be hashed
+    print("Cipher has been called")
     key = "xxx".encode("utf-8")
     cipher = AES.new(key, AES.MODE_EAX)
     #here the data is being encoded
@@ -200,18 +226,24 @@ def login(username_entry, password_entry):
     val = (username, )
     mycursor.execute(sql, val)
     data = mycursor.fetchall()
-    for x in data:
-        print(x)
     if len(data) != 0:
-        stored_password = data[0]
+        for x in data:
+            loop = 0
+            for i in x:
+                if loop == 0:
+                    user_id = i
+                elif loop == 2:
+                    stored_password = i
+                    #need to hash passwords when stored and decrypt after
+                    #pulling
+                loop += 1
         if password != stored_password:
-            error = Label(text="Wrong username or password, you entered " + username + password)
+            error = Label(text="Wrong username or password")
             error.grid_forget()
             presence_check = error.winfo_exists()
             if presence_check == 1:
                 error.grid(row=3,column=1,pady=1)
         elif password == stored_password:
-            user_id = data[0]
             homepage(user_id)
     if len(data) == 0:
         error = Label(text="Wrong username or password")

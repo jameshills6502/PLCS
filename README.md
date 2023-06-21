@@ -1,4 +1,4 @@
-# PLCS
+# Password Manager Tool
 This is a password management tool that connects to a database
 The tables referred to are as follows:
 users - a table which contains a username, password and unique encryption key

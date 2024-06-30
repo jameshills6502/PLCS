@@ -266,7 +266,6 @@ def encrypt(data, user_id, masterpass):
     data = data.encode("utf-8")
     #here the data is being decoded
     #data = data.decode("utf-8")
-    #this is being fucked up somewhere
     nonce = cipher.nonce
     ciphertext, tag = cipher.encrypt_and_digest(data)
     stored_text = nonce + tag + ciphertext
@@ -355,7 +354,6 @@ def master_encrypt(data, masterpass):
         return stored_text
     #here the data is being decoded
     #data = data.decode("utf-8")
-    #this is being fucked up somewhere
 def master_decrypt(data, masterpass):
     key = masterpass.encode("utf-8")
     encrypted_password = bytes(data)
